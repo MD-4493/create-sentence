@@ -1,0 +1,26 @@
+{
+  "id": "it-programming",
+  "name": "IT / 编程",
+  "words": [
+    "algorithm", "function", "variable", "constant", "parameter",
+    "argument", "return", "loop", "condition", "recursion",
+    "class", "object", "method", "property", "instance",
+    "inheritance", "interface", "abstraction", "polymorphism", "encapsulation",
+    "array", "list", "stack", "queue", "tree",
+    "graph", "hash", "map", "set", "linked list",
+    "debug", "compile", "deploy", "release", "build",
+    "test", "refactor", "optimize", "migrate", "scale",
+    "version", "commit", "merge", "branch", "fork",
+    "pull request", "code review", "bug", "issue", "ticket",
+    "frontend", "backend", "fullstack", "framework", "library",
+    "component", "module", "package", "dependency", "API",
+    "endpoint", "request", "response", "render", "DOM",
+    "database", "query", "table", "column", "row",
+    "index", "primary key", "foreign key", "transaction", "migration",
+    "server", "client", "container", "Docker", "Kubernetes",
+    "CI/CD", "pipeline", "log", "monitor", "alert",
+    "cache", "proxy", "firewall", "HTTPS", "TCP",
+    "async", "sync", "parallel", "concurrent", "thread",
+    "process", "memory", "CPU", "runtime"
+  ]
+}

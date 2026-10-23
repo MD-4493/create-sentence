@@ -1,0 +1,15 @@
+# 依赖与构建产物
+node_modules/
+dist/
+out/
+_downloaded/
+
+# 密钥（绝不入库）
+.env
+
+# 日志与临时文件
+*.log
+*.tmp
+.DS_Store
+
+lib/

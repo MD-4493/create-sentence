@@ -1,0 +1,40 @@
+{
+  "banks": [
+    {
+      "id": "cefr-a1",
+      "name": "CEFR A1（基础入门）",
+      "category": "CEFR",
+      "level": "beginner",
+      "wordCount": 200,
+      "file": "cefr-a1.json",
+      "description": "入门级常用词，覆盖基础代词、动词、名词、形容词、介词等"
+    },
+    {
+      "id": "cefr-b1",
+      "name": "CEFR B1（中级）",
+      "category": "CEFR",
+      "level": "intermediate",
+      "wordCount": 150,
+      "file": "cefr-b1.json",
+      "description": "中级常用词，覆盖情感、工作、旅行、健康、抽象概念等"
+    },
+    {
+      "id": "it-programming",
+      "name": "IT / 编程",
+      "category": "Domain",
+      "level": "professional",
+      "wordCount": 104,
+      "file": "it-programming.json",
+      "description": "IT / 软件开发常用词，覆盖算法、编程、Web、数据库、运维等"
+    },
+    {
+      "id": "medical",
+      "name": "医学 / 医疗",
+      "category": "Domain",
+      "level": "professional",
+      "wordCount": 109,
+      "file": "medical.json",
+      "description": "医学常用词，覆盖解剖、症状、医疗动作、药物、医务场所等"
+    }
+  ]
+}

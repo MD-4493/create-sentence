@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>造句学英语</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>📚 造句学英语</h1>
+      <p class="subtitle">让单词在语境中"再撞见"你一次</p>
+      <p class="day-badge" id="dayBadge"></p>
+    </header>
+
+    <main>
+      <section class="card hidden" id="reviewSection">
+        <div class="step-header">
+          <span class="step-num review-num">↻</span>
+          <h2>复习 <span class="review-round" id="reviewRoundLabel"></span></h2>
+        </div>
+
+        <div id="reviewLoading" class="review-loading hidden">正在生成复习题目…</div>
+        <div id="reviewError" class="review-error hidden"></div>
+
+        <div id="reviewQuiz" class="hidden">
+          <div class="review-progress" id="reviewProgress"></div>
+          <div class="review-sentence" id="reviewSentence"></div>
+          <div class="review-prompt">加粗的词在这个句子里是什么意思？</div>
+          <div class="review-options" id="reviewOptions"></div>
+          <div class="review-result hidden" id="reviewResult"></div>
+          <div class="row">
+            <button id="reviewNextBtn" class="primary hidden">下一个</button>
+          </div>
+        </div>
+
+        <div id="reviewSummary" class="hidden"></div>
+
+        <div class="row review-skip-row">
+          <button id="skipReviewBtn" class="secondary">跳过复习，直接学习新单词</button>
+        </div>
+      </section>
+
+      <div id="learnArea" class="hidden">
+      <section class="card" id="step1">
+        <div class="step-header">
+          <span class="step-num">1</span>
+          <h2>选词库 & 选词</h2>
+        </div>
+
+        <div class="bank-bar">
+          <label for="bankSelect">词库：</label>
+          <select id="bankSelect"></select>
+          <span class="bank-info" id="bankInfo"></span>
+        </div>
+
+        <details class="bank-manage" id="bankManage">
+          <summary>➕ 扩充词库：加生词 / 导入文件 / AI 生成</summary>
+
+          <div class="manage-block">
+            <div class="manage-title">① 添加到「我的生词本」（读文章遇到的生词）</div>
+            <textarea id="myWordsInput" rows="2"
+              placeholder="输入或粘贴单词，逗号、空格换行都行，例如：ubiquitous, mitigate, ephemeral"></textarea>
+            <div class="row"><button id="addMyWordsBtn" class="secondary">添加到生词本</button></div>
+          </div>
+
+          <div class="manage-block">
+            <div class="manage-title">② 导入词库文件（.txt / .csv，一行一词；带中文释义的行只取行首英文）</div>
+            <div class="row"><button id="importBankBtn" class="secondary">📂 选择文件导入</button></div>
+          </div>
+
+          <div class="manage-block">
+            <div class="manage-title">③ 让 AI 按描述生成词库</div>
+            <div class="row">
+              <input type="text" id="aiBankDesc" placeholder="例如：GRE 高频词 / 雅思学术写作 / 经济学人常见词 / 医学相关" />
+              <select id="aiBankCount">
+                <option value="50">50 个</option>
+                <option value="100" selected>100 个</option>
+                <option value="200">200 个</option>
+              </select>
+              <button id="aiBankBtn" class="secondary">生成</button>
+            </div>
+          </div>
+
+          <div class="manage-block hidden" id="deleteBankBlock">
+            <button id="deleteBankBtn" class="secondary danger">🗑 删除当前自定义词库</button>
+          </div>
+        </details>
+
+        <div class="word-search-bar">
+          <input type="text" id="wordSearch" placeholder="🔍 搜索单词..." />
+          <span class="learned-stats" id="learnedStats"></span>
+        </div>
+
+        <div class="word-list" id="wordList"></div>
+
+        <div class="action-bar">
+          <button id="selectAllBtn" class="secondary">全选当前列表</button>
+          <button id="deselectAllBtn" class="secondary">清空选择</button>
+          <button id="randomPickBtn" class="secondary">🎲 随机 5 个</button>
+          <span class="selected-info">已选 <strong id="selectedCount">0</strong> 个</span>
+          <button id="generateBtn" class="primary">生成例句</button>
+        </div>
+      </section>
+
+      <section class="card hidden" id="step2">
+        <div class="step-header">
+          <span class="step-num">2</span>
+          <h2>看看例句</h2>
+        </div>
+        <p class="step-hint">蓝色是这个词在这句里的意思；词卡给的是它本身的核心释义。两者对不上时，以词卡为准。</p>
+        <div id="sentencesList" class="sentences-list"></div>
+      </section>
+
+      <section class="card hidden" id="step3">
+        <div class="step-header">
+          <span class="step-num">3</span>
+          <h2>关键词造句</h2>
+        </div>
+        <div class="keywords-box">
+          <strong>关键词：</strong>
+          <span id="keywordsList"></span>
+          <span class="keywords-hint">（不要求全部用上，挑你顺手的）</span>
+        </div>
+        <textarea
+          id="userSentence"
+          placeholder="用上面的关键词，自己造一个英文句子..."
+          rows="3"
+        ></textarea>
+        <div class="row">
+          <button id="correctBtn" class="primary">检查我的句子</button>
+        </div>
+      </section>
+
+      <section class="card hidden" id="step4">
+        <div class="step-header">
+          <span class="step-num">4</span>
+          <h2>反馈</h2>
+        </div>
+        <div id="feedbackContent" class="feedback"></div>
+      </section>
+      </div>
+    </main>
+
+    <footer>
+      <span>v0.3 · 基于 Electron + DeepSeek</span>
+    </footer>
+  </div>
+
+  <script src="review-core.js"></script>
+  <script src="renderer.js"></script>
+</body>
+</html>

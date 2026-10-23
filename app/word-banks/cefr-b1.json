@@ -1,0 +1,31 @@
+{
+  "id": "cefr-b1",
+  "name": "CEFR B1（中级）",
+  "words": [
+    "angry", "afraid", "bored", "excited", "tired", "surprised", "worried",
+    "proud", "kind", "friendly", "polite", "honest", "lazy", "patient", "nervous",
+    "always", "usually", "often", "sometimes", "rarely", "never", "already",
+    "yet", "since", "during", "while", "until", "recently",
+    "job", "career", "company", "salary", "business", "meeting", "project",
+    "success", "interview", "employee", "manager", "experience", "customer",
+    "report", "office",
+    "airport", "flight", "journey", "trip", "vacation", "holiday", "hotel",
+    "ticket", "passport", "luggage", "guide", "map", "tourist",
+    "health", "illness", "medicine", "doctor", "hospital", "pain", "fever",
+    "ache", "hurt", "patient", "treatment",
+    "society", "culture", "tradition", "community", "neighbor", "population",
+    "government", "public", "private", "citizen",
+    "idea", "problem", "solution", "reason", "cause", "effect", "result",
+    "decision", "chance", "opportunity", "risk", "plan", "goal",
+    "consider", "suggest", "expect", "prefer", "avoid", "imagine", "suppose",
+    "believe", "remember", "forget", "decide", "choose", "manage", "succeed",
+    "fail", "improve", "depend",
+    "important", "necessary", "possible", "available", "similar", "different",
+    "common", "special", "modern", "traditional", "popular", "famous",
+    "comfortable", "dangerous",
+    "although", "however", "because", "unless", "whereas", "moreover",
+    "therefore", "besides", "otherwise", "meanwhile", "instead", "according",
+    "completely", "extremely", "fairly", "nearly", "quite", "rather",
+    "eventually", "immediately", "suddenly", "frequently"
+  ]
+}

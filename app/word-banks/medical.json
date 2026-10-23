@@ -1,0 +1,30 @@
+{
+  "id": "medical",
+  "name": "医学 / 医疗",
+  "words": [
+    "heart", "lung", "liver", "kidney", "brain",
+    "stomach", "intestine", "bone", "muscle", "skin",
+    "blood", "vein", "artery", "nerve", "cell",
+    "tissue", "organ", "skeleton", "eye", "ear",
+    "nose", "throat", "chest", "abdomen", "spine",
+    "joint", "cartilage",
+    "fever", "cough", "headache", "pain", "fatigue",
+    "nausea", "vomiting", "diarrhea", "dizziness", "rash",
+    "infection", "inflammation", "allergy", "asthma", "diabetes",
+    "hypertension", "cancer", "tumor", "fracture", "wound",
+    "flu", "cold", "pneumonia", "bronchitis", "arthritis",
+    "depression", "anxiety", "insomnia", "obesity", "anemia",
+    "diagnose", "treat", "cure", "prevent", "vaccinate",
+    "prescribe", "operate", "examine", "scan", "hospitalize",
+    "discharge", "refer", "consult", "monitor", "observe",
+    "surgery", "check-up", "blood test", "x-ray", "MRI",
+    "CT", "ultrasound", "biopsy", "therapy", "rehabilitation",
+    "recovery",
+    "doctor", "nurse", "surgeon", "physician", "dentist",
+    "pharmacist", "therapist", "specialist", "patient",
+    "hospital", "clinic", "pharmacy", "emergency room", "ICU",
+    "ward", "operating room", "laboratory",
+    "medicine", "drug", "pill", "capsule", "injection",
+    "vaccine", "antibiotic", "painkiller", "dosage", "side effect"
+  ]
+}
