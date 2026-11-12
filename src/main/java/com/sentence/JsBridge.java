@@ -5,6 +5,7 @@ import com.sentence.llm.DeepSeekClient;
 import com.sentence.llm.JsonLoose;
 import com.sentence.llm.LlmException;
 import com.sentence.llm.Prompts;
+import com.sentence.review.ReviewOps;
 import com.sentence.review.ReviewStore;
 import com.sentence.words.CustomBankStore;
 import com.sentence.words.Dictionary;
@@ -187,6 +188,14 @@ public final class JsBridge {
                 complete(id, false, message);
             }
         });
+    }
+
+    /**
+     * 复习调度的同步入口：由 review-core.js 通过 window.__javaBridge.reviewOp(op, payload) 调用。
+     * 纯内存计算，直接跑在 FX 线程上；返回 JSON 字符串，失败返回 null 交给前端回退 JS 实现。
+     */
+    public String reviewOp(String op, String payloadJson) {
+        return ReviewOps.handle(op, payloadJson);
     }
 
     /** 前端 localStorage 的写穿：只保留在内存并异步落盘，不阻塞 FX 线程。 */

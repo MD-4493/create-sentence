@@ -210,7 +210,15 @@
       bankValue: select ? select.value : '',
       dayBadge: (byId('dayBadge') || {}).textContent || '',
       reviewVisible: visible('reviewSection'),
+      reviewSetupVisible: visible('reviewSetup'),
+      reviewReviewedBanks: (function () {
+        var boxes = document.querySelectorAll('#reviewBankList input[type="checkbox"]');
+        var checked = 0;
+        for (var i = 0; i < boxes.length; i++) if (boxes[i].checked) checked++;
+        return boxes.length + '/' + checked;
+      })(),
       reviewQuizVisible: visible('reviewQuiz'),
+      reviewEngine: (typeof window.__reviewEngine === 'string') ? window.__reviewEngine : 'js',
       reviewErrorVisible: visible('reviewError'),
       reviewLoadingVisible: !byId('reviewLoading').classList.contains('hidden'),
       learnVisible: visible('learnArea'),

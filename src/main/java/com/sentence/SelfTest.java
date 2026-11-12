@@ -8,6 +8,7 @@ import com.sentence.llm.JsonLoose;
 import com.sentence.llm.LlmException;
 import com.sentence.review.LegacyImporter;
 import com.sentence.review.ReviewCore;
+import com.sentence.review.ReviewOps;
 import com.sentence.review.ReviewState;
 import com.sentence.review.ReviewStore;
 import com.sentence.words.CustomBankStore;
@@ -47,6 +48,7 @@ public final class SelfTest {
             testJsonLoose();
             testHtmlSupport();
             testReviewCore();
+            testReviewOps();
             testParityWithJs(cli);
             testCustomBankStore(temp.resolve("banks"));
             testWordBankRepository(cli, temp.resolve("repo"));
@@ -144,6 +146,11 @@ public final class SelfTest {
         ReviewState reloaded = ReviewCore.load(kv, "2026-01-02");
         check("当天已复习记录保留", reloaded.reviewedWords.contains("alpha"));
 
+        ReviewCore.markLearned(nextDay, List.of("gamma"), "custom:test");
+        ReviewCore.save(kv, nextDay);
+        ReviewState reloaded2 = ReviewCore.load(kv, "2026-01-02");
+        check("词库归属会持久化", "custom:test".equals(reloaded2.sources.get("gamma")));
+
         ReviewState thirdDay = ReviewCore.load(kv, "2026-01-03");
         check("新的一天清空已复习", thirdDay.reviewedWords.isEmpty());
 
@@ -178,9 +185,28 @@ public final class SelfTest {
         check("剩余可复习数量", remaining == 6);
 
         List<ReviewCore.Pick> picks = ReviewCore.pickRound(st, Set.of(), () -> 0.0);
-        check("最近一天 2 个 + 最远一天 3 个", picks.size() == 5);
+        check("最近一天 2 个 + 最远一天 4 个", picks.size() == 6);
         check("最近侧来自第 3 天", picks.subList(0, 2).stream().allMatch(p -> p.day() == 3));
-        check("最远侧来自第 1 天", picks.subList(2, 5).stream().allMatch(p -> p.day() == 1));
+        check("最远侧来自第 1 天", picks.subList(2, 6).stream().allMatch(p -> p.day() == 1));
+
+        // 按词库过滤：只复习 bankA 的词
+        ReviewState own = new ReviewState();
+        own.currentDay = 5;
+        own.days.put(1, new ArrayList<>(List.of("a1", "a2", "b1")));
+        own.sources.put("a1", "bankA");
+        own.sources.put("a2", "bankA");
+        own.sources.put("b1", "bankB");
+        java.util.function.Predicate<String> onlyA = w -> "bankA".equals(own.sources.get(w));
+        check("按词库统计剩余", ReviewCore.remainingCount(own, Set.of(), onlyA) == 2);
+        check("不筛选时统计全部", ReviewCore.remainingCount(own, Set.of()) == 3);
+        List<ReviewCore.Pick> onlyAPicks = ReviewCore.pickRound(own, Set.of(), () -> 0.0, onlyA);
+        check("按词库筛选后只出 bankA 的词",
+                onlyAPicks.size() == 2 && onlyAPicks.stream().allMatch(p -> "bankA".equals(own.sources.get(p.word()))));
+
+        ReviewCore.markLearned(own, List.of("c1"), "bankB");
+        check("学习时记录词库归属", "bankB".equals(own.sources.get("c1")) && own.days.get(5).contains("c1"));
+        ReviewCore.markLearned(own, List.of("c2"));
+        check("不传词库时保留原归属", !own.sources.containsKey("c2"));
 
         ReviewState legacy = ReviewCore.migrateLegacy(Json.tree(
                 "{\"alpha\":{\"lastSeen\":\"2026-10-01T02:00:00.000Z\"},"
@@ -190,6 +216,46 @@ public final class SelfTest {
 
         check("旧版记录为空时返回 null",
                 ReviewCore.migrateLegacy(Json.tree("{}")) == null);
+
+        ReviewState round = ReviewCore.sanitize(ReviewCore.toJson(st));
+        check("状态 JSON 往返一致", round != null && round.currentDay == st.currentDay
+                && round.days.equals(st.days) && round.sources.equals(st.sources)
+                && round.steps.equals(st.steps));
+    }
+
+    // ==================== 运行时入口 ReviewOps ====================
+
+    private static void testReviewOps() {
+        section("ReviewOps（前端实际调用的入口）");
+        String state = "{\"currentDay\":5,\"lastDate\":\"2026-01-01\","
+                + "\"days\":{\"1\":[\"a1\",\"a2\"],\"2\":[\"b1\"]},"
+                + "\"sources\":{\"a1\":\"bankA\",\"a2\":\"bankA\",\"b1\":\"bankB\"},"
+                + "\"steps\":{},\"reviewedDay\":5,\"reviewedWords\":[]}";
+
+        JsonNode counts = Json.tree(ReviewOps.handle("dueCounts", "{\"state\":" + state + "}")).path("counts");
+        check("dueCounts 按词库统计", counts.path("bankA").asInt() == 2 && counts.path("bankB").asInt() == 1);
+
+        JsonNode picks = Json.tree(ReviewOps.handle("pickRound",
+                "{\"state\":" + state + ",\"allowedBanks\":[\"bankB\"]}"));
+        check("pickRound 只出指定词库", picks.size() == 1
+                && "b1".equals(picks.get(0).path("word").asText()));
+
+        JsonNode apply = Json.tree(ReviewOps.handle("applyResult",
+                "{\"state\":" + state + ",\"word\":\"b1\",\"correct\":true}"));
+        check("applyResult 返回新状态与间隔", apply.path("interval").asInt() == 2
+                && apply.path("state").path("days").path("6").toString().contains("b1"));
+
+        JsonNode learned = Json.tree(ReviewOps.handle("markLearned",
+                "{\"state\":" + state + ",\"words\":[\"c1\"],\"bankId\":\"bankC\"}"));
+        check("markLearned 写回词库归属",
+                "bankC".equals(learned.path("state").path("sources").path("c1").asText()));
+
+        JsonNode reviewed = Json.tree(ReviewOps.handle("markReviewed",
+                "{\"state\":" + state + ",\"word\":\"a1\"}"));
+        check("markReviewed 写入当天已复习",
+                reviewed.path("state").path("reviewedWords").toString().contains("a1"));
+
+        check("未知 op 返回 null", ReviewOps.handle("nope", "{\"state\":" + state + "}") == null);
     }
 
     // ==================== 与原版 JS 对拍 ====================

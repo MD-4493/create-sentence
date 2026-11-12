@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.function.Predicate;
 
 /**
  * 复习调度核心，逐条对应原版 review-core.js（纯函数，无 DOM 依赖）。
@@ -27,13 +28,14 @@ import java.util.TreeMap;
  *  - 每个词只存在于一个"天"里；第 N 天的桶在第 N+1 天到期（今天学的词明天才复习）；
  *  - 答对 → 按连续答对次数排到未来：2 / 4 / 7 / 15 / 30 / 60 天后；
  *  - 答错 → 排到明天重来一次，连续答对次数清零；
- *  - 每轮取最近到期的一天最多 3 个 + 最久没复习的一天最多 3 个，三轮一个循环；
- *  - 今天已经复习过的词存在 reviewedWords，避免同一天重复出题。
+ *  - 每轮取最近到期的一天最多 5 个 + 最久没复习的一天最多 5 个（每轮最多 10 题），三轮一个循环；
+ *  - 今天已经复习过的词存在 reviewedWords，避免同一天重复出题；
+ *  - sources 记录每个词来自哪个词库，复习时可以只挑某几个词库。
  */
 public final class ReviewCore {
     public static final String STORE_KEY = "learnedDays";
     public static final String LEGACY_KEY = "learnedWords";
-    public static final int PER_SIDE = 3;
+    public static final int PER_SIDE = 5;
     public static final int ROUNDS_PER_CYCLE = 3;
     /** 答对后的间隔（天）：连续答对 1 次 → 2 天后，2 次 → 4 天后，……最多 60 天。 */
     public static final int[] INTERVALS = {2, 4, 7, 15, 30, 60};
@@ -107,6 +109,11 @@ public final class ReviewCore {
     }
 
     public static void save(KeyValue storage, ReviewState state) {
+        storage.put(STORE_KEY, Json.write(toJson(state)));
+    }
+
+    /** 状态序列化：前端与 Java 之间用 JSON 往返，字段与 localStorage 里的结构一致。 */
+    public static ObjectNode toJson(ReviewState state) {
         ObjectNode root = Json.object();
         root.put("currentDay", state.currentDay);
         root.put("lastDate", state.lastDate == null ? "" : state.lastDate);
@@ -122,7 +129,11 @@ public final class ReviewCore {
         for (Map.Entry<String, Integer> e : state.steps.entrySet()) {
             steps.put(e.getKey(), e.getValue());
         }
-        storage.put(STORE_KEY, Json.write(root));
+        ObjectNode sources = root.putObject("sources");
+        for (Map.Entry<String, String> e : state.sources.entrySet()) {
+            sources.put(e.getKey(), e.getValue());
+        }
+        return root;
     }
 
     public static ReviewState sanitize(JsonNode node) {
@@ -171,6 +182,14 @@ public final class ReviewCore {
                 if (e.getValue().isIntegralNumber() && e.getValue().asInt() >= 0) {
                     state.steps.put(e.getKey(), e.getValue().asInt());
                 }
+            }
+        }
+        JsonNode sources = node.get("sources");
+        if (sources != null && sources.isObject()) {
+            Iterator<Map.Entry<String, JsonNode>> it = sources.fields();
+            while (it.hasNext()) {
+                Map.Entry<String, JsonNode> e = it.next();
+                if (e.getValue().isTextual()) state.sources.put(e.getKey(), e.getValue().asText());
             }
         }
         state.reviewedDay = node.path("reviewedDay").asInt(0);
@@ -254,9 +273,16 @@ public final class ReviewCore {
         state.days.computeIfAbsent(day, k -> new ArrayList<>()).add(word);
     }
 
-    /** 学习新词（造句环节）：单词记入"今天"。 */
+    /** 学习新词（造句环节）：单词记入"今天"，并记下它来自哪个词库。 */
     public static void markLearned(ReviewState state, List<String> words) {
-        for (String w : words) placeWord(state, w, state.currentDay);
+        markLearned(state, words, null);
+    }
+
+    public static void markLearned(ReviewState state, List<String> words, String bankId) {
+        for (String w : words) {
+            placeWord(state, w, state.currentDay);
+            if (bankId != null && !bankId.isBlank()) state.sources.put(w, bankId);
+        }
     }
 
     public static Set<String> learnedSet(ReviewState state) {
@@ -267,12 +293,20 @@ public final class ReviewCore {
 
     // ==================== 选词 ====================
 
-    private static List<String> unreviewedIn(ReviewState state, int day, Set<String> reviewed, Set<String> exclude) {
+    private static List<String> unreviewedIn(ReviewState state, int day, Set<String> reviewed,
+                                             Set<String> exclude) {
+        return unreviewedIn(state, day, reviewed, exclude, null);
+    }
+
+    /** allow 为 null 时不过滤；否则只保留 allow 返回 true 的词。 */
+    private static List<String> unreviewedIn(ReviewState state, int day, Set<String> reviewed,
+                                             Set<String> exclude, Predicate<String> allow) {
         List<String> source = state.days.getOrDefault(day, List.of());
         List<String> out = new ArrayList<>();
         for (String w : source) {
             if (reviewed.contains(w)) continue;
             if (exclude != null && exclude.contains(w)) continue;
+            if (allow != null && !allow.test(w)) continue;
             out.add(w);
         }
         return out;
@@ -280,16 +314,26 @@ public final class ReviewCore {
 
     /** 实际最近的、仍有未复习单词的一天（第 1 天 ~ 今天的前一天）。 */
     public static Integer nearestDay(ReviewState state, Set<String> reviewed, Set<String> exclude) {
+        return nearestDay(state, reviewed, exclude, null);
+    }
+
+    public static Integer nearestDay(ReviewState state, Set<String> reviewed, Set<String> exclude,
+                                     Predicate<String> allow) {
         for (int d = state.currentDay - 1; d >= 1; d--) {
-            if (!unreviewedIn(state, d, reviewed, exclude).isEmpty()) return d;
+            if (!unreviewedIn(state, d, reviewed, exclude, allow).isEmpty()) return d;
         }
         return null;
     }
 
     /** 实际最远的、仍有未复习单词的一天。 */
     public static Integer farthestDay(ReviewState state, Set<String> reviewed, Set<String> exclude) {
+        return farthestDay(state, reviewed, exclude, null);
+    }
+
+    public static Integer farthestDay(ReviewState state, Set<String> reviewed, Set<String> exclude,
+                                      Predicate<String> allow) {
         for (int d = 1; d <= state.currentDay - 1; d++) {
-            if (!unreviewedIn(state, d, reviewed, exclude).isEmpty()) return d;
+            if (!unreviewedIn(state, d, reviewed, exclude, allow).isEmpty()) return d;
         }
         return null;
     }
@@ -303,22 +347,28 @@ public final class ReviewCore {
         return new ArrayList<>(a.subList(0, Math.min(n, a.size())));
     }
 
-    /** 选一轮的词：最近一天最多 3 个 + 最远一天最多 3 个。 */
+    /** 选一轮的词：最近一天最多 5 个 + 最远一天最多 5 个（每轮最多 10 题）。 */
     public static List<Pick> pickRound(ReviewState state, Set<String> reviewed, Rng rng) {
+        return pickRound(state, reviewed, rng, null);
+    }
+
+    /** allow 为 null 时不过滤；按词库复习时传入。 */
+    public static List<Pick> pickRound(ReviewState state, Set<String> reviewed, Rng rng,
+                                       Predicate<String> allow) {
         Rng random = rng == null ? SYSTEM_RNG : rng;
         List<Pick> picks = new ArrayList<>();
         Set<String> chosen = new HashSet<>();
 
-        Integer near = nearestDay(state, reviewed, chosen);
+        Integer near = nearestDay(state, reviewed, chosen, allow);
         if (near != null) {
-            for (String w : sample(unreviewedIn(state, near, reviewed, chosen), PER_SIDE, random)) {
+            for (String w : sample(unreviewedIn(state, near, reviewed, chosen, allow), PER_SIDE, random)) {
                 picks.add(new Pick(w, near, "near"));
                 chosen.add(w);
             }
         }
-        Integer far = farthestDay(state, reviewed, chosen);
+        Integer far = farthestDay(state, reviewed, chosen, allow);
         if (far != null) {
-            for (String w : sample(unreviewedIn(state, far, reviewed, chosen), PER_SIDE, random)) {
+            for (String w : sample(unreviewedIn(state, far, reviewed, chosen, allow), PER_SIDE, random)) {
                 picks.add(new Pick(w, far, "far"));
                 chosen.add(w);
             }
@@ -347,11 +397,15 @@ public final class ReviewCore {
         return new Move(from, to, interval);
     }
 
-    /** 还剩多少个本次未复习的可复习单词。 */
+    /** 还剩多少个本次未复习的可复习单词（allow 可按词库过滤）。 */
     public static int remainingCount(ReviewState state, Set<String> reviewed) {
+        return remainingCount(state, reviewed, null);
+    }
+
+    public static int remainingCount(ReviewState state, Set<String> reviewed, Predicate<String> allow) {
         int n = 0;
         for (int d = 1; d <= state.currentDay - 1; d++) {
-            n += unreviewedIn(state, d, reviewed, null).size();
+            n += unreviewedIn(state, d, reviewed, null, allow).size();
         }
         return n;
     }

@@ -3,14 +3,16 @@ let currentBank = null;
 let currentWords = [];
 let selectedWords = new Set();
 let userPickedKeywords = [];
+let userPickedBankId = '';   // 生成例句时所在的词库，记到学习记录里
+let bankList = [];           // getWordBanks 的原始列表（id / name），复习选词表用
 
 const $ = (id) => document.getElementById(id);
 
 // ============ 学习记录（按"第 N 天"分桶，见 review-core.js） ============
 const state = ReviewCore.load(localStorage);
 
-function markLearned(words) {
-  ReviewCore.markLearned(state, words);
+function markLearned(words, bankId) {
+  ReviewCore.markLearned(state, words, bankId);
   ReviewCore.save(localStorage, state);
 }
 
@@ -131,6 +133,7 @@ function renderFeedback(text) {
 async function loadBanks(preferId) {
   try {
     const data = await window.api.getWordBanks();
+    bankList = data.banks;
     const select = $('bankSelect');
     select.innerHTML = data.banks.map(b =>
       `<option value="${escapeHtml(b.id)}">${escapeHtml(b.name)}</option>`
@@ -256,6 +259,7 @@ $('generateBtn').addEventListener('click', async () => {
 
   const words = Array.from(selectedWords);
   userPickedKeywords = words;
+  userPickedBankId = currentBank ? currentBank.id : '';
 
   try {
     await setBusy($('generateBtn'), '生成中…', async () => {
@@ -289,8 +293,8 @@ $('correctBtn').addEventListener('click', async () => {
       renderFeedback(feedback);
       showSection('step4');
 
-      // 标记这些词为"已学"
-      markLearned(userPickedKeywords);
+      // 标记这些词为"已学"，并记下它们来自哪个词库
+      markLearned(userPickedKeywords, userPickedBankId);
       // 重新渲染单词列表（更新已学标记）
       renderWordList($('wordSearch').value);
     });
@@ -321,7 +325,8 @@ const review = {
   queue: [],             // 当前轮的题目
   idx: 0,
   cycleCorrect: 0,
-  cycleTotal: 0
+  cycleTotal: 0,
+  allowedBanks: null       // 复习范围：词库 id 数组；null 表示全部词表
 };
 
 function shuffle(arr) {
@@ -334,9 +339,143 @@ function shuffle(arr) {
 }
 
 function reviewShow(part) {
-  for (const id of ['reviewLoading', 'reviewError', 'reviewQuiz', 'reviewSummary']) {
+  for (const id of ['reviewSetup', 'reviewLoading', 'reviewError', 'reviewQuiz', 'reviewSummary']) {
     $(id).classList.toggle('hidden', id !== part);
   }
+}
+
+// ============ 复习前选词表 ============
+const BANK_SELECTION_KEY = 'reviewBankSelection';
+
+function bankName(id) {
+  if (!id || id === 'unknown') return '未分类（历史词）';
+  const bank = bankList.find(b => b.id === id);
+  return bank ? bank.name : id;
+}
+
+// 每个词表里有多少个"已到期、今天还没复习"的词（调度由 Java 负责，前端只负责显示）
+function dueCounts() {
+  return ReviewCore.dueCounts(state);
+}
+
+// 老数据没有 sources：按词库内容反推一次。推不出的记成 "unknown"，
+// 避免每次启动都把所有词库重扫一遍。
+async function ensureWordSources() {
+  if (!state.sources) state.sources = {};
+  if (bankList.length === 0) return;   // 词库列表没加载成功，留到下次再反推
+  const unknown = new Set();
+  for (const arr of Object.values(state.days)) {
+    for (const w of arr) if (!state.sources[w]) unknown.add(w);
+  }
+  if (unknown.size === 0) return;
+
+  for (const bank of bankList) {
+    if (unknown.size === 0) break;
+    try {
+      const data = await window.api.getWords(bank.id);
+      const words = new Set(data.words.map(w => String(w).toLowerCase()));
+      let hit = false;
+      for (const w of [...unknown]) {
+        if (words.has(w)) {
+          state.sources[w] = bank.id;
+          unknown.delete(w);
+          hit = true;
+        }
+      }
+      if (hit) ReviewCore.save(localStorage, state);
+    } catch (e) {
+      console.warn('反推词表失败:', bank.id, e.message);
+    }
+  }
+  if (unknown.size > 0) {
+    for (const w of unknown) state.sources[w] = 'unknown';
+    ReviewCore.save(localStorage, state);
+  }
+}
+
+function loadBankSelection() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(BANK_SELECTION_KEY) || '[]');
+    return Array.isArray(raw) ? raw.map(String) : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveBankSelection(ids) {
+  localStorage.setItem(BANK_SELECTION_KEY, JSON.stringify(ids));
+}
+
+function selectedBankIds() {
+  return [...document.querySelectorAll('#reviewBankList input[type="checkbox"]:checked')]
+    .map(cb => cb.value);
+}
+
+let dueCountMap = new Map();
+
+function updateReviewStart() {
+  const ids = selectedBankIds();
+  const total = ids.reduce((n, id) => n + (dueCountMap.get(id) || 0), 0);
+  const btn = $('reviewStartBtn');
+  btn.disabled = ids.length === 0 || total === 0;
+  btn.textContent = total > 0 ? `开始复习（${total} 个词）` : '开始复习';
+  $('reviewStartHint').textContent = ids.length === 0
+    ? '至少选一个词表'
+    : (total === 0 ? '所选词表今天没有到期的词' : `每轮最多 10 题，共 ${ReviewCore.ROUNDS_PER_CYCLE} 轮`);
+}
+
+async function renderReviewSetup() {
+  $('reviewRoundLabel').textContent = '';
+  await ensureWordSources();
+
+  const counts = dueCounts();
+  dueCountMap = counts;
+  const groups = [...counts.entries()]
+    .filter(([, n]) => n > 0)
+    .sort((a, b) => (a[0] === '' ? 1 : b[0] === '' ? -1 : 0));
+  const list = $('reviewBankList');
+
+  if (groups.length === 0) {
+    list.innerHTML = '<div class="empty">今天没有到期的单词</div>';
+    updateReviewStart();
+    return;
+  }
+
+  const saved = loadBankSelection();
+  list.innerHTML = groups.map(([id, n]) => `
+    <label class="review-bank">
+      <input type="checkbox" value="${escapeHtml(id)}" ${saved.length === 0 || saved.includes(id) ? 'checked' : ''}>
+      <span class="rb-name">${escapeHtml(bankName(id))}</span>
+      <span class="rb-count">${n} 个到期</span>
+    </label>`).join('');
+
+  list.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+    cb.addEventListener('change', () => {
+      saveBankSelection(selectedBankIds());
+      updateReviewStart();
+    });
+  });
+  updateReviewStart();
+
+  // 冒烟测试（--smoke-test）里自动点"开始复习"，保证自动化还能走到出题、答题流程
+  if (window.__smokeMode) {
+    setTimeout(() => {
+      if (!$('reviewStartBtn').disabled) $('reviewStartBtn').click();
+    }, 200);
+  }
+}
+
+async function showReviewSetup() {
+  reviewShow('reviewSetup');
+  await renderReviewSetup();
+}
+
+function startSelectedReview() {
+  const ids = selectedBankIds();
+  if (ids.length === 0) return;
+  saveBankSelection(ids);
+  review.allowedBanks = ids;
+  startReviewCycle();
 }
 
 function enterLearning() {
@@ -355,7 +494,7 @@ function startReviewCycle() {
 
 async function startReviewRound() {
   review.round++;
-  review.picks = ReviewCore.pickRound(state, review.reviewed);
+  review.picks = ReviewCore.pickRound(state, review.reviewed, undefined, review.allowedBanks);
 
   // 没有可复习的词了
   if (review.picks.length === 0) {
@@ -481,30 +620,36 @@ $('reviewNextBtn').addEventListener('click', () => {
 });
 
 function showReviewSummary() {
-  const remaining = ReviewCore.remainingCount(state, review.reviewed);
+  const remaining = ReviewCore.remainingCount(state, review.reviewed, review.allowedBanks);
+  const totalDue = ReviewCore.remainingCount(state, review.reviewed);
   const done = review.cycleTotal;
 
   const head = done > 0
     ? `<div class="big">本次复习完成：答对 ${review.cycleCorrect} / ${done}</div>`
     : `<div class="big">今天没有需要复习的单词了</div>`;
   const sub = remaining > 0
-    ? `还有 ${remaining} 个词可以继续复习，也可以直接去学习新单词。`
-    : '所有已学单词都复习过了，去学新单词吧！';
+    ? `所选词表里还有 ${remaining} 个词可以继续复习，也可以直接去学习新单词。`
+    : (totalDue > 0
+      ? `所选词表今天复习完了；其他词表还有 ${totalDue} 个词到期，可以换词表继续。`
+      : '所有已学单词都复习过了，去学新单词吧！');
 
   $('reviewSummary').innerHTML = `
     <div class="review-summary-box">${head}<div class="small">${sub}</div></div>
     <div class="review-summary-actions">
       ${remaining > 0 ? '<button id="reviewContinueBtn" class="secondary">继续复习</button>' : ''}
+      ${totalDue > 0 ? '<button id="reviewChangeBanksBtn" class="secondary">换词表</button>' : ''}
       <button id="reviewToLearnBtn" class="primary">学习新单词</button>
     </div>`;
   $('reviewRoundLabel').textContent = '';
   reviewShow('reviewSummary');
 
   if (remaining > 0) $('reviewContinueBtn').addEventListener('click', startReviewCycle);
+  if (totalDue > 0) $('reviewChangeBanksBtn').addEventListener('click', showReviewSetup);
   $('reviewToLearnBtn').addEventListener('click', enterLearning);
 }
 
 $('skipReviewBtn').addEventListener('click', enterLearning);
+$('reviewStartBtn').addEventListener('click', startSelectedReview);
 
 
 // ============ 词库扩充 ============
@@ -559,13 +704,17 @@ $('deleteBankBtn').addEventListener('click', async () => {
 });
 
 // ============ 初始化 ============
-updateDayBadge();
-loadBanks();
-
-// 每次打开软件先复习：第 1 天 ~ 昨天 里有单词才进入复习，否则直接学习
-if (ReviewCore.remainingCount(state, review.reviewed) > 0) {
-  $('reviewSection').classList.remove('hidden');
-  startReviewCycle();
-} else {
-  enterLearning();
+// 先把词库列表读出来（复习选词表和"反推历史词的归属"都要用），
+// 再决定是进复习（先选词表，不调用 API）还是直接学习。
+async function init() {
+  updateDayBadge();
+  await loadBanks();
+  if (ReviewCore.remainingCount(state, review.reviewed) > 0) {
+    $('reviewSection').classList.remove('hidden');
+    await showReviewSetup();
+  } else {
+    enterLearning();
+  }
 }
+
+init();

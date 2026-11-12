@@ -21,6 +21,15 @@
           <h2>复习 <span class="review-round" id="reviewRoundLabel"></span></h2>
         </div>
 
+        <div id="reviewSetup" class="hidden">
+          <p class="step-hint">先选这次要复习的词表（只统计已到期的词）。选好后点「开始复习」才会调用 AI 出题。</p>
+          <div class="review-bank-list" id="reviewBankList"></div>
+          <div class="row">
+            <button id="reviewStartBtn" class="primary" disabled>开始复习</button>
+            <span class="hint" id="reviewStartHint"></span>
+          </div>
+        </div>
+
         <div id="reviewLoading" class="review-loading hidden">正在生成复习题目…</div>
         <div id="reviewError" class="review-error hidden"></div>
 
@@ -144,7 +153,7 @@
     </main>
 
     <footer>
-      <span>v0.3 · 基于 Electron + DeepSeek</span>
+      <span>v0.3 · 基于 JavaFX + DeepSeek</span>
     </footer>
   </div>
 
