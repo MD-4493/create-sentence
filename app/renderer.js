@@ -273,6 +273,8 @@ $('generateBtn').addEventListener('click', async () => {
       $('userSentence').value = '';
       hideSection('step4');
     });
+    // 新的一组例句：句子输入框已清空，按钮回到“检查”
+    $('correctBtn').textContent = '检查我的句子';
   } catch (e) {
     alert('生成失败：' + e.message);
     console.error(e);
@@ -298,11 +300,50 @@ $('correctBtn').addEventListener('click', async () => {
       // 重新渲染单词列表（更新已学标记）
       renderWordList($('wordSearch').value);
     });
+    // 看过反馈后，按钮改为“再次检查句子”，配合反馈区的“修改句子 / 再次检查”
+    $('correctBtn').textContent = '再次检查句子';
   } catch (e) {
     alert('检查失败：' + e.message);
     console.error(e);
   }
 });
+
+// 反馈区：回到输入框修改句子
+$('editSentenceBtn').addEventListener('click', () => {
+  if ($('correctBtn').disabled) return;   // 正在检查时不打断
+  const ta = $('userSentence');
+  ta.focus();
+  ta.setSelectionRange(ta.value.length, ta.value.length);
+  ta.scrollIntoView({ behavior: 'smooth', block: 'center' });
+});
+
+// 反馈区：用当前输入框里的句子再检查一次
+$('recheckBtn').addEventListener('click', () => {
+  $('correctBtn').click();
+});
+
+// 反馈区：开始新的一轮（清空选择与四步内容，回到选词）
+function startNewRound() {
+  if ($('correctBtn').disabled) return;   // 正在检查时不打断
+  selectedWords.clear();
+  userPickedKeywords = [];
+  userPickedBankId = '';
+  $('wordSearch').value = '';
+  renderWordList('');
+  updateSelectedCount();
+  $('sentencesList').innerHTML = '';
+  $('keywordsList').textContent = '';
+  $('userSentence').value = '';
+  $('feedbackContent').innerHTML = '';
+  $('correctBtn').textContent = '检查我的句子';
+  hideSection('step2');
+  hideSection('step3');
+  hideSection('step4');
+  $('step1').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  $('wordSearch').focus();
+}
+
+$('newRoundBtn').addEventListener('click', startNewRound);
 
 // 快捷键
 $('wordSearch').addEventListener('keydown', (e) => {

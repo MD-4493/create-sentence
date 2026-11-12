@@ -668,6 +668,10 @@ footer {
   justify-content: flex-end;
 }
 
+.feedback-actions {
+  justify-content: flex-end;
+}
+
 /* ===== 复习：先选词表 ===== */
 .review-bank-list {
   display: flex;
