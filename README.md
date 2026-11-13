@@ -58,18 +58,27 @@ cd create-sentence
 
 方式二：在仓库页面点 **Code → Download ZIP**，解压后进入目录（路径可以带空格，脚本已处理）。
 
-然后执行：
+> **先确认目录**：无论 clone 还是解压，当前目录里都应该能直接看到 `app`、`tools`、`build.ps1`。
+> 如果 ZIP 解压后多套了一层同名文件夹（例如 `create-sentence-main\create-sentence-main\app`），
+> 先 `cd` 进里面那层再执行下面的命令。可以用 `Get-ChildItem` 检查。
+
+然后逐条执行（不要整段一次性粘贴，某一步失败时后面会在错误的目录里继续跑）：
 
 ```powershell
+# 0) 确认位置：输出里应有 app、tools、build.ps1
+Get-ChildItem
+
 # 1) 一次性下载依赖（JavaFX + Jackson，约 43 MB，缓存在 lib/）
 node tools/fetch-deps.mjs
 
 # 2) 编译
 powershell -ExecutionPolicy Bypass -File build.ps1
 
-# 3) 配置 API Key（二选一）
-#    app\.env，或 %APPDATA%\create-sentence\.env
-#    DEEPSEEK_API_KEY=sk-你的key
+# 3) 配置 API Key：复制模板为 .env，再把 key 填进 .env
+Copy-Item app\.env.example app\.env
+notepad app\.env
+#    内容形如：DEEPSEEK_API_KEY=sk-你的key
+#    也可以把 .env 放到 %APPDATA%\create-sentence\.env
 
 # 4) 运行
 powershell -ExecutionPolicy Bypass -File run.ps1
