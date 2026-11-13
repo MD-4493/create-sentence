@@ -14,9 +14,9 @@ import java.util.Map;
 import java.util.stream.Stream;
 
 /**
- * 从旧版 Electron 的 localStorage（LevelDB）里抢救学习记录。
+ * 从旧版 localStorage（LevelDB）里抢救学习记录。
  *
- * 原理：Electron 的 localStorage 把 "键\x01值" 以明文写进 leveldb 的 .log/.ldb 文件，
+ * 原理：localStorage 把 "键\x01值" 以明文写进 leveldb 的 .log/.ldb 文件，
  * 而本应用每次都是整份 JSON 覆盖写入，所以"文件里最后一次出现的 learnedDays"就是当前进度。
  * 这里只读不写，找不到就返回空 map，不影响启动。
  */

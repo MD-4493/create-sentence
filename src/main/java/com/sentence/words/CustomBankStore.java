@@ -18,7 +18,7 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * 自定义词库存储，文件与原 Electron 版共用：
+ * 自定义词库存储（文件位置沿用旧版数据目录）：
  *   %APPDATA%\create-sentence\custom-banks.json
  * 结构: { "banks": [ { "id": "...", "name": "...", "words": ["..."] } ] }
  */

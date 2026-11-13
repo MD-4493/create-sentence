@@ -55,7 +55,7 @@ public final class ReviewStore implements ReviewCore.KeyValue {
         Map<String, String> imported = LegacyImporter.fromLevelDb(legacyLevelDbDir);
         if (!imported.isEmpty()) {
             values.putAll(imported);
-            System.out.println("已从旧版 Electron 数据导入学习记录: " + imported.keySet());
+            System.out.println("已从旧版数据导入学习记录: " + imported.keySet());
             flushNow();
         }
     }

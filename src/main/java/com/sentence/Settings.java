@@ -12,8 +12,8 @@ import java.util.Map;
 /**
  * 运行时配置：应用根目录（原前端文件所在目录）、数据目录、API 配置。
  *
- * 数据目录默认与 Electron 版保持一致（%APPDATA%\create-sentence），
- * 这样已有的 custom-banks.json 可以原样被 Java 版复用。
+ * 数据目录默认沿用旧版位置（%APPDATA%\create-sentence），
+ * 这样已有的 custom-banks.json 可以原样复用。
  */
 public final class Settings {
     public static final String DEFAULT_MODEL = "deepseek-flash";
