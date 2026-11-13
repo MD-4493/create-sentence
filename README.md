@@ -177,6 +177,18 @@ Create Sentence/
 
 首次运行会尝试从旧版 localStorage（LevelDB）目录只读导入学习记录，导入后不再依赖旧数据。
 
+数据按 **Windows 用户** 存放，不随解压/安装目录变化：同一台电脑、同一个 Windows 账号下的多个副本会共用
+同一份学习记录和自定义词库。这是桌面应用的常见做法；换一台电脑或换一个 Windows 用户就是全新状态。
+
+想在**同一台机器**上模拟“全新用户”，用 `--data-dir` 指定一个空目录即可（不影响原有进度）：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File run.ps1 --data-dir="out\fresh-data"
+# 打包后的 exe 同理：CreateSentence.exe --data-dir="D:\fresh-data"
+```
+
+`app\.env` 里有 API Key，分享源码或压缩包时不要把它一起发出去（仓库里的 `.gitignore` 已排除 `.env`）。
+
 ## 已知限制
 
 - WebView 没有彩色 emoji 字体，📚🔍🎲 等显示为单色符号；
