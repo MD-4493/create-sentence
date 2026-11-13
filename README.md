@@ -45,12 +45,22 @@ WebView（HTML/CSS/JS） ──window.api──▶ JsBridge（Java）
 
 ## 快速开始
 
-环境要求：JDK 21；Node 只在下载依赖时用到。
+**系统要求**：Windows 10/11（x64）、JDK 21、Node.js 18+（仅用于下载依赖）、
+能访问 Maven Central 与 DeepSeek API 的网络。项目里的脚本是 PowerShell / BAT，暂不支持 macOS / Linux。
+
+获取代码（二选一）：
 
 ```powershell
-git clone git@github.com:MD-4493/create-sentence.git
+# 方式一：git clone（公开仓库用 HTTPS，不需要登录）
+git clone https://github.com/MD-4493/create-sentence.git
 cd create-sentence
+```
 
+方式二：在仓库页面点 **Code → Download ZIP**，解压后进入目录（路径可以带空格，脚本已处理）。
+
+然后执行：
+
+```powershell
 # 1) 一次性下载依赖（JavaFX + Jackson，约 43 MB，缓存在 lib/）
 node tools/fetch-deps.mjs
 
@@ -65,7 +75,8 @@ powershell -ExecutionPolicy Bypass -File build.ps1
 powershell -ExecutionPolicy Bypass -File run.ps1
 ```
 
-也可以直接双击 `start-java.bat`。
+也可以直接双击 `start-java.bat`。仓库里没有预编译的 exe，需要按上面的步骤自行编译，
+或使用 **Releases** 页面提供的打包产物（如果发布了的话）。
 
 ## 使用
 

@@ -1,4 +1,4 @@
-// 下载本项目所需的 Java 依赖到 java-port/lib（无需 Maven/Gradle）
+// 下载本项目所需的 Java 依赖到项目根目录的 lib/（无需 Maven/Gradle）
 //
 // 说明：JavaFX 11+ 在 Maven Central 上的无分类器 jar 只是空壳（约 302 字节），
 // 真正含类与原生库的是 -win 分类器 jar，因此这里只取 -win。
