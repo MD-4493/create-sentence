@@ -2,6 +2,10 @@
 # Usage: powershell -ExecutionPolicy Bypass -File test.ps1
 $ErrorActionPreference = 'Stop'
 
+# Keep Chinese test output readable under Windows PowerShell 5.1 (console defaults
+# to the OEM code page while the JVM writes UTF-8).
+try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catch { }
+
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $out = Join-Path $here 'out\classes'
 $lib = Join-Path $here 'lib'

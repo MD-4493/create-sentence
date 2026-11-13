@@ -36,4 +36,21 @@ $javaArgs = @(
     "--app-root=$appRoot"
 )
 
+# Windows PowerShell 5.1 decodes native-command output with the console code page
+# (936 on Chinese Windows), while the JVM writes UTF-8 because of -Dstdout.encoding.
+# Switch the console to UTF-8 for the app's lifetime, then restore it.
+$previousOutputEncoding = $null
+try {
+    $previousOutputEncoding = [Console]::OutputEncoding
+    [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
+} catch {
+    # No console (output redirected): nothing to adjust.
+}
+
 & $java @javaArgs @args
+$exitCode = $LASTEXITCODE
+
+if ($null -ne $previousOutputEncoding) {
+    try { [Console]::OutputEncoding = $previousOutputEncoding } catch { }
+}
+exit $exitCode
